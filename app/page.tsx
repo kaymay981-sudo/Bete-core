@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function BETEArchitecture() {
   const [activeStep, setActiveStep] = useState(0);
@@ -11,6 +11,14 @@ export default function BETEArchitecture() {
     { title: "Evidence Integrity Score", desc: "Calculating deterministic trust metric." },
     { title: "Deterministic Decision", desc: "Action: Proceed / Pause / Reject." }
   ];
+
+  // The timer needs to be INSIDE the component, right here:
+  useEffect(() => {
+    if (activeStep < steps.length - 1) {
+      const timer = setTimeout(() => setActiveStep(prev => prev + 1), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [activeStep, steps.length]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-cyan-400 p-8 font-mono flex flex-col items-center justify-center">
