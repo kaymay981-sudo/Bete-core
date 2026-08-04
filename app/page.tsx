@@ -1,247 +1,82 @@
 "use client";
+import React, { useState, useEffect, useMemo } from "react";
+import { Terminal, Activity, Cpu, ShieldCheck, Key, Hash, RefreshCcw, Layers, Network } from "lucide-react";
+import { startRegistration } from '@simplewebauthn/browser';
 
-import React, { useState, useEffect } from 'react';
-import { Activity, Shield, Database, CheckCircle, RefreshCw, Cpu, Server, Fingerprint, XCircle } from 'lucide-react';
-
-// --- 1. UPDATED BETE FLOW (NOW WITH WEBAUTHN) ---
-const BeteFlow = () => {
-  const [activeStep, setActiveStep] = useState(0);
-  const [authStatus, setAuthStatus] = useState<'idle' | 'prompting' | 'success' | 'failed'>('idle');
-
-  const steps = [
-    { id: 1, title: 'Transaction Starts', desc: 'Initiating continuous evidence gathering.', icon: <Activity size={20} /> },
-    { id: 2, title: 'BETE-GUARD Layer', desc: 'Covert duress & environmental telemetry capture.', icon: <Shield size={20} /> },
-    { id: 3, title: 'ALEF Layer', desc: '15-15-10 Matrix testing & information gain routing.', icon: <Database size={20} /> },
-    { id: 4, title: 'Evidence Integrity Score', desc: 'Calculating deterministic trust metric.', icon: <CheckCircle size={20} /> },
-    { id: 5, title: 'Deterministic Decision', desc: 'Awaiting Cryptographic Signature.', icon: <Server size={20} /> },
-  ];
-
-  // Auto-run flow until the final decision step
-  useEffect(() => {
-    if (activeStep < steps.length - 1) {
-      const timer = setTimeout(() => {
-        setActiveStep((prev) => prev + 1);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [activeStep, steps.length]);
-
-  // Native WebAuthn Call
-  const handleBiometricAuth = async () => {
-    if (!window.PublicKeyCredential) {
-      alert("WebAuthn is not supported on this browser/device.");
-      return;
-    }
-
-    try {
-      setAuthStatus('prompting');
-      
-      // Generating dummy challenge for the frontend simulation
-      const challenge = new Uint8Array(32);
-      crypto.getRandomValues(challenge);
-      const userId = new Uint8Array(16);
-      crypto.getRandomValues(userId);
-
-      // Triggers native FaceID / Fingerprint
-      const credential = await navigator.credentials.create({
-        publicKey: {
-          challenge: challenge,
-          rp: { name: "BETE Protocol", id: window.location.hostname },
-          user: { id: userId, name: "architect@bete.local", displayName: "BETE Architect" },
-          pubKeyCredParams: [{ type: "public-key", alg: -7 }], // ES256 Cryptography
-          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
-          timeout: 60000,
-        }
-      });
-
-      if (credential) {
-        setAuthStatus('success');
-      }
-    } catch (err) {
-      console.error("Biometric auth failed or was canceled:", err);
-      setAuthStatus('failed');
-    }
-  };
-
-  const resetFlow = () => {
-    setActiveStep(0);
-    setAuthStatus('idle');
-  };
-
-  return (
-    <div className="flex flex-col items-center w-full max-w-md mx-auto">
-      {steps.map((step, index) => {
-        const isActive = index === activeStep;
-        const isPast = index < activeStep;
-        const isFinalStep = index === steps.length - 1;
-
-        return (
-          <div key={step.id} className="relative flex flex-col items-center w-full">
-            <div
-              className={`w-full p-4 rounded-md border-2 transition-all duration-500 ease-in-out ${
-                isActive && !isFinalStep ? 'border-cyan-400 bg-cyan-900/20 shadow-[0_0_15px_rgba(34,211,238,0.4)]' : 
-                isPast ? 'border-slate-700 bg-slate-800/50' : 
-                isFinalStep && isActive ? 'border-cyan-400 bg-slate-900/80 shadow-[0_0_20px_rgba(34,211,238,0.2)]' :
-                'border-slate-800 bg-slate-900/30'
-              }`}
-            >
-              <h3 className={`text-lg font-mono font-bold flex items-center gap-2 ${isActive || isPast ? 'text-cyan-400' : 'text-slate-600'}`}>
-                {step.icon} {step.title}
-              </h3>
-              
-              {!isFinalStep && (
-                <p className={`text-sm font-mono mt-2 ${isActive ? 'text-cyan-200' : 'text-slate-500'}`}>
-                  {step.desc}
-                </p>
-              )}
-
-              {/* Dynamic Final Step UI */}
-              {isFinalStep && isActive && (
-                <div className="mt-4 flex flex-col items-center">
-                  {authStatus === 'idle' && (
-                    <button 
-                      onClick={handleBiometricAuth}
-                      className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2 px-6 rounded-full transition-all animate-pulse"
-                    >
-                      <Fingerprint size={20} /> SIGN TRANSACTION
-                    </button>
-                  )}
-                  {authStatus === 'prompting' && (
-                    <p className="text-cyan-400 animate-pulse font-mono text-sm flex items-center gap-2">
-                      <Fingerprint size={16} /> Awaiting hardware verification...
-                    </p>
-                  )}
-                  {authStatus === 'success' && (
-                    <div className="text-green-400 font-mono text-sm flex flex-col items-center">
-                      <CheckCircle size={24} className="mb-1" />
-                      <span>PROCEED: Verified & Signed</span>
-                    </div>
-                  )}
-                  {authStatus === 'failed' && (
-                    <div className="text-red-400 font-mono text-sm flex flex-col items-center">
-                      <XCircle size={24} className="mb-1" />
-                      <span>REJECTED: Verification Failed</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {index < steps.length - 1 && (
-              <div className={`w-0.5 h-6 transition-colors duration-500 ${isPast ? 'bg-cyan-700' : 'bg-slate-800'}`}></div>
-            )}
-          </div>
-        );
-      })}
-      
-      <button 
-        onClick={resetFlow}
-        className="mt-8 flex items-center gap-2 px-4 py-2 border border-slate-700 rounded text-cyan-500 font-mono hover:bg-slate-800 transition-colors"
-      >
-        <RefreshCw size={16} /> Reset Flow
-      </button>
-    </div>
-  );
-};
-
-// --- 2. TELEMETRY PANEL (Unchanged) ---
-const TelemetryPanel = () => {
-  const [data, setData] = useState<any>(null);
-
-  useEffect(() => {
-    setData({
-      platform: navigator.platform,
-      cores: navigator.hardwareConcurrency || 'Unknown',
-      resolution: `${window.screen.width}x${window.screen.height}`,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      language: navigator.language,
-      trustScore: (Math.random() * (99.9 - 95.0) + 95.0).toFixed(2)
-    });
-  }, []);
-
-  if (!data) return <div className="text-cyan-500 font-mono">Initializing sensors...</div>;
-
-  return (
-    <div className="w-full border border-slate-700 bg-slate-900/50 p-4 rounded-md font-mono text-sm">
-      <h3 className="text-cyan-500 font-bold border-b border-slate-700 pb-2 mb-3 flex items-center gap-2">
-        <Cpu size={16} /> LIVE BETE-GUARD TELEMETRY
-      </h3>
-      <div className="space-y-2 text-slate-300">
-        <p><span className="text-slate-500">SYS_PLATFORM:</span> {data.platform}</p>
-        <p><span className="text-slate-500">LOGICAL_CORES:</span> {data.cores}</p>
-        <p><span className="text-slate-500">VIEWPORT_RES:</span> {data.resolution}</p>
-        <p><span className="text-slate-500">TIMEZONE_LOC:</span> {data.timezone}</p>
-        <p><span className="text-slate-500">LOCALE_PREF:</span> {data.language}</p>
-        <div className="mt-4 pt-3 border-t border-slate-700">
-          <p className="text-cyan-400 font-bold">
-            &gt; EVIDENCE_INTEGRITY: {data.trustScore}%
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- 3. ALEF MATRIX (Unchanged) ---
-const AlefMatrix = () => {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const nodes = [
-    ...Array(15).fill('bg-blue-900/50 border-blue-500/50 text-blue-400'),
-    ...Array(15).fill('bg-red-900/50 border-red-500/50 text-red-400'),
-    ...Array(10).fill('bg-slate-800 border-slate-500 text-slate-400')
-  ].sort(() => Math.random() - 0.5);
-
-  useEffect(() => {
-    const interval = setInterval(() => setActiveIndex(Math.floor(Math.random() * 40)), 400);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="w-full border border-slate-700 bg-slate-900/50 p-4 rounded-md font-mono">
-      <h3 className="text-cyan-500 font-bold border-b border-slate-700 pb-2 mb-3 flex items-center gap-2">
-        <Database size={16} /> ALEF 15-15-10 ROUTING MATRIX
-      </h3>
-      <div className="grid grid-cols-8 gap-1.5 mt-4">
-        {nodes.map((colorClasses, i) => (
-          <div 
-            key={i} 
-            className={`w-full aspect-square border rounded-sm transition-all duration-200 flex items-center justify-center text-[10px]
-            ${i === activeIndex ? 'bg-cyan-400 border-cyan-400 shadow-[0_0_10px_cyan] text-slate-900 scale-110 z-10' : colorClasses}
-            `}
-          >
-            {i === activeIndex ? '1' : '0'}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// --- 4. MAIN DASHBOARD ---
+interface TelemetryData { throughput: number; latency: number; activeNodes: number; blockHeight: number; }
+const STEP_DEFINITIONS = [
+ { id: "init", label: "Initialize Trust Anchor", icon: Terminal },
+ { id: "verify", label: "Verify ALEF Constraints", icon: Cpu },
+ { id: "auth", label: "Awaiting User Signature", icon: Key },
+ { id: "commit", label: "Commit to Base44", icon: ShieldCheck },
+];
 export default function Dashboard() {
-  return (
-    <main className="min-h-screen bg-[#0a0f1a] text-slate-200 p-4 md:p-8 selection:bg-cyan-900 selection:text-cyan-100">
-      <div className="max-w-6xl mx-auto space-y-8">
-        
-        <div className="text-center space-y-2 mb-10">
-          <h1 className="text-3xl md:text-4xl font-mono font-bold tracking-wider text-white">
-            BETE Protocol
-          </h1>
-          <p className="text-slate-400 font-mono text-sm">
-            Architect: Ken | Active Command Center
-          </p>
-        </div>
+ const [activeStep, setActiveStep] = useState(0);
+ const [isAuthenticating, setIsAuthenticating] = useState(false);
+ const [txHash, setTxHash] = useState<string | null>(null);
+ const [activeMatrixNodes, setActiveMatrixNodes] = useState<number[]>([]);
+ const [telemetry, setTelemetry] = useState<TelemetryData>({ throughput: 1240, latency: 42, activeNodes: 142, blockHeight: 884920 });
+ 
+ const matrixNodes = useMemo(() => [
+ ...Array(15).fill("bg-cyan-900/40 border-cyan-500/50 text-cyan-400"),
+ ...Array(15).fill("bg-blue-900/40 border-blue-500/50 text-blue-400"),
+ ...Array(10).fill("bg-slate-800 border-slate-700/50 text-slate-500"),
+ ].sort(() => Math.random() - 0.5), []);
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-slate-950 p-6 rounded-lg border border-slate-800 shadow-2xl">
-            <BeteFlow />
-          </div>
-          <div className="space-y-6 flex flex-col justify-center">
-            <TelemetryPanel />
-            <AlefMatrix />
-          </div>
-        </div>
-      </div>
-    </main>
-  );
+ // Multi-node fast processing animation
+ useEffect(() => { const t = setInterval(() => { setActiveMatrixNodes([Math.floor(Math.random() * 40), Math.floor(Math.random() * 40), Math.floor(Math.random() * 40)]); }, 300); return () => clearInterval(t); }, []);
+ // Advanced telemetry fluctuation
+ useEffect(() => { const t = setInterval(() => setTelemetry(p => ({ throughput: Math.max(800, p.throughput + Math.floor(Math.random() * 60 - 30)), latency: Math.max(10, p.latency + Math.floor(Math.random() * 10 - 5)), activeNodes: Math.max(100, p.activeNodes + Math.floor(Math.random() * 6 - 3)), blockHeight: p.blockHeight + 1 })), 2000); return () => clearInterval(t); }, []);
+ useEffect(() => { if (activeStep < 2) { const t = setTimeout(() => setActiveStep(p => p + 1), 1500); return () => clearTimeout(t); } }, [activeStep]);
+ const handleSignTransaction = async () => {
+ setIsAuthenticating(true);
+ try {
+ const options = {
+ challenge: "bW9jay1jaGFsbGVuZ2U=", rp: { name: "Base44 Prototype", id: window.location.hostname },
+ user: { id: "bW9jay11c2Vy", name: "operator@base44", displayName: "Node Operator" },
+ pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+ timeout: 60000, authenticatorSelection: { userVerification: "required" }
+ };
+ const assertion = await startRegistration(options as any);
+ const verificationResp = await fetch('/api/verify-signature', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assertion, challenge: "mock" }) });
+ if ((await verificationResp.json()).success) {
+ const mockHash = "0x" + Array.from(crypto.getRandomValues(new Uint8Array(20))).map(b => b.toString(16).padStart(2, "0")).join("");
+ setTxHash(mockHash); setActiveStep(3); setTimeout(() => setActiveStep(4), 1500);
+ }
+ } catch (error: any) { alert("Signature error: " + error.message); } finally { setIsAuthenticating(false); }
+ };
+ const resetFlow = () => { setActiveStep(0); setTxHash(null); };
+
+ return (
+ <div className="min-h-screen bg-[#0a0f1a] text-slate-300 font-mono p-6 selection:bg-cyan-500/30">
+ <header className="mb-8 border-b border-slate-800 pb-4 flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-end">
+ <div><h1 className="text-2xl font-bold text-white flex items-center gap-2"><Terminal className="text-cyan-400" /> Base44 Command Center</h1><p className="text-slate-500 text-sm mt-1">Trust Protocol Visualizer v1.3.0</p></div>
+ <div className="flex w-max items-center gap-2 text-sm text-cyan-400 bg-cyan-950/30 px-3 py-1 rounded-full border border-cyan-900/50"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span></span> Network Live</div>
+ </header>
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+ <div className="bg-[#0f1623] border border-slate-800 rounded-lg p-5 shadow-lg flex flex-col"><h2 className="text-lg text-white mb-6 font-semibold flex items-center gap-2"><Activity size={18} className="text-cyan-400" /> Sequence Flow</h2>
+ <div className="space-y-6 flex-1">
+ {STEP_DEFINITIONS.map((step, idx) => {
+ const isActive = activeStep === idx; const isPast = activeStep > idx; const Icon = step.icon;
+ return (
+ <div key={step.id} className="flex items-start gap-4 relative">
+ {idx !== STEP_DEFINITIONS.length - 1 && (<div className={`absolute top-8 left-4 w-px h-10 ${isPast ? 'bg-cyan-500/50' : 'bg-slate-800'}`} />)}
+ <div className={`w-8 h-8 rounded flex items-center justify-center shrink-0 border z-10 transition-colors ${isActive ? 'bg-cyan-900/50 border-cyan-400 text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.3)]' : isPast ? 'bg-slate-800 border-cyan-600/50 text-cyan-600' : 'bg-slate-900 border-slate-800 text-slate-600'}`}><Icon size={16} /></div>
+ <div className="pt-1"><p className={`text-sm ${isActive ? 'text-cyan-300 font-bold' : isPast ? 'text-slate-400' : 'text-slate-600'}`}>{step.label}</p>
+ {isActive && idx === 2 && (<button onClick={handleSignTransaction} disabled={isAuthenticating} className="mt-3 text-xs bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 px-4 py-2 rounded transition-all active:scale-95 disabled:opacity-50">{isAuthenticating ? "Awaiting Biometrics..." : "Sign Transaction"}</button>)}
+ {isPast && idx === 2 && txHash && (<div className="mt-2 text-xs bg-black/30 border border-slate-800 p-2 rounded flex items-center gap-2 text-emerald-400 w-fit"><Hash size={12} className="shrink-0" /><span className="truncate w-36">{txHash}</span></div>)}
+ </div></div>);})}
+ </div>
+ {activeStep >= STEP_DEFINITIONS.length && (<button onClick={resetFlow} className="mt-6 flex items-center justify-center gap-2 w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition-colors text-sm"><RefreshCcw size={14} /> Restart Sequence</button>)}
+ </div>
+ <div className="bg-[#0f1623] border border-slate-800 rounded-lg p-5 shadow-lg"><h2 className="text-lg text-white mb-6 font-semibold flex items-center gap-2"><Cpu size={18} className="text-blue-400" /> Live Telemetry</h2>
+ <div className="grid grid-cols-2 gap-4">
+ <div className="bg-black/40 border border-slate-800 p-4 rounded flex flex-col justify-between"><div className="flex items-center gap-2 mb-2"><Network size={14} className="text-slate-500"/><p className="text-slate-500 text-[10px] uppercase tracking-wider">Throughput</p></div><p className="text-xl text-slate-200">{telemetry.throughput} <span className="text-xs text-slate-500">TPS</span></p></div>
+ <div className="bg-black/40 border border-slate-800 p-4 rounded flex flex-col justify-between"><div className="flex items-center gap-2 mb-2"><Activity size={14} className="text-slate-500"/><p className="text-slate-500 text-[10px] uppercase tracking-wider">Latency</p></div><p className="text-xl text-slate-200">{telemetry.latency} <span className="text-xs text-slate-500">ms</span></p></div>
+ <div className="bg-black/40 border border-slate-800 p-4 rounded flex flex-col justify-between"><div className="flex items-center gap-2 mb-2"><Cpu size={14} className="text-slate-500"/><p className="text-slate-500 text-[10px] uppercase tracking-wider">Nodes</p></div><p className="text-xl text-slate-200">{telemetry.activeNodes}</p></div>
+ <div className="bg-black/40 border border-slate-800 p-4 rounded flex flex-col justify-between"><div className="flex items-center gap-2 mb-2"><Layers size={14} className="text-slate-500"/><p className="text-slate-500 text-[10px] uppercase tracking-wider">Height</p></div><p className="text-xl text-slate-200">#{telemetry.blockHeight}</p></div>
+ </div></div>
+ <div className="bg-[#0f1623] border border-slate-800 rounded-lg p-5 shadow-lg"><h2 className="text-lg text-white mb-6 font-semibold flex items-center gap-2"><ShieldCheck size={18} className="text-indigo-400" /> ALEF Matrix</h2>
+ <div className="grid grid-cols-5 gap-2">{matrixNodes.map((colorClasses, idx) => (<div key={idx} className={`aspect-square rounded border flex items-center justify-center text-[10px] transition-all duration-200 ${colorClasses} ${activeMatrixNodes.includes(idx) ? 'ring-2 ring-cyan-400/50 scale-110 brightness-150 shadow-[0_0_15px_rgba(34,211,238,0.4)] bg-cyan-600/30' : ''}`}>{idx.toString(16).padStart(2, '0').toUpperCase()}</div>))}</div>
+ </div></div></div>);
 }
